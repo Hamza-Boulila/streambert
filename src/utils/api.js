@@ -132,7 +132,9 @@ export const PLAYER_SOURCES = [
     progressViaFrames: true, // video is in a nested iframe, needs main-process frame query
     colorParam: null, // vidsrc doesn't support color param
     langParam: "ds_lang", // ISO 639-1 language code
-    params: {},
+    params: {
+      autoplay: "1"
+    },
     movieUrl: (id) => `https://vsembed.su/embed/movie/${id}`,
     tvUrl: (id, season, ep) =>
       `https://vsembed.su/embed/tv/${id}/${season}/${ep}`,
@@ -170,6 +172,24 @@ export const PLAYER_SOURCES = [
       `https://peachify.top/embed/tv/${id}/${season}/${ep}`,
   },
   {
+    id: "vidfast",
+    label: "Vidfast",
+    tag: null,
+    note: null,
+    supportsProgress: true,
+    colorParam: "theme", // hex without # → e.g. "e50914"
+    langParam: "sub",
+    params: {
+      autoPlay: "true",
+      poster: "true",
+      title: "true",
+      pip: "hide",
+    },
+    movieUrl: (id) => `https://vidfast.vc/movie/${id}`,
+    tvUrl: (id, season, ep) =>
+      `https://vidfast.vc/tv/${id}/${season}/${ep}`,
+  },
+  {
     id: "allmanga",
     label: "AllManga",
     tag: "ANIME",
@@ -181,6 +201,10 @@ export const PLAYER_SOURCES = [
     tvUrl: (_id, _season, _ep) => "https://allmanga.to",
   },
 ];
+
+// Sources that require a transparent webRequest intercept to load properly
+export const NEEDS_INTERCEPT = ["vidsrc"];
+
 export const getSourceUrl = (
   sourceId,
   type,
@@ -239,9 +263,6 @@ export const getNextNonAsyncSource = (currentId) => {
   if (idx < 0) return nonAsync[0].id;
   return nonAsync[(idx + 1) % nonAsync.length].id;
 };
-
-// Sources that require a transparent webRequest intercept to load properly
-export const NEEDS_INTERCEPT = ["vidsrc"];
 
 // ── AniList API (anime metadata) ──────────────────────────────────────────────
 const ANILIST_API = "https://graphql.anilist.co";
