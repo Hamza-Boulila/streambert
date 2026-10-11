@@ -190,6 +190,22 @@ export const PLAYER_SOURCES = [
       `https://vidfast.vc/tv/${id}/${season}/${ep}`,
   },
   {
+    id: "vidrift",
+    label: "Vidrift",
+    tag: null,
+    note: "Multi Lang",
+    supportsProgress: true,
+    colorParam: "brandColor",
+    langParam: "sub",
+    params: {
+      title: "true",
+      hide: "next,episodes,cast",
+    },
+    movieUrl: (id) => `https://embed.vidrift.net/embed/movie/${id}`,
+    tvUrl: (id, season, ep) =>
+      `https://embed.vidrift.net/embed/tv/${id}/${season}/${ep}`,
+  },
+  {
     id: "allmanga",
     label: "AllManga",
     tag: "ANIME",

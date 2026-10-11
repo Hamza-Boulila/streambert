@@ -83,7 +83,7 @@ const BLOCKED_HOSTS = [
   "*://protrafficinspector.com/*",
   "*://s10.histats.com/*",
   "*://weirdopt.com/*",
-  "*://static.cloudflareinsights.com/*",
+  "*://*.cloudflareinsights.com/*",
   "*://kettledroopingcontinuation.com/*",
   "*://wayfarerorthodox.com/*",
   "*://woxaglasuy.net/*",
@@ -97,6 +97,7 @@ const BLOCKED_HOSTS = [
   "*://rzjzjnavztycv.online/*",
   "*://tmstr4.cloudnestra.com/*",
   "*://tmstr4.neonhorizonworkshops.com/*",
+  "*://hameltnoummos.com/*",
 ];
 
 // -- Module-level state --------------------------------------------------------
