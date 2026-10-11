@@ -140,21 +140,6 @@ export const PLAYER_SOURCES = [
       `https://vsembed.su/embed/tv/${id}/${season}/${ep}`,
   },
   {
-    id: "vidking",
-    label: "Vidking",
-    tag: null,
-    note: null,
-    supportsProgress: true,
-    colorParam: "color", // hex without # → e.g. "e50914"
-    langParam: null,
-    params: {
-      autoPlay: "true",
-    },
-    movieUrl: (id) => `https://www.vidking.net/embed/movie/${id}`,
-    tvUrl: (id, season, ep) =>
-      `https://www.vidking.net/embed/tv/${id}/${season}/${ep}`,
-  },
-  {
     id: "peachify",
     label: "Peachify",
     tag: null,
@@ -490,7 +475,7 @@ export const isAnimeContent = (item, details) => {
 
 // Default sources
 export const ANIME_DEFAULT_SOURCE = "allmanga";
-export const NON_ANIME_DEFAULT_SOURCE = "vidking";
+export const NON_ANIME_DEFAULT_SOURCE = "vidsrc";
 
 // ── Episode Group fetch (localStorage + in-memory cache, 7-day TTL) ─────────
 // Episode groups almost never change -> cache aggressively across sessions.
