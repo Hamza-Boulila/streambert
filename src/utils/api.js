@@ -191,6 +191,25 @@ export const PLAYER_SOURCES = [
       `https://embed.vidrift.net/embed/tv/${id}/${season}/${ep}`,
   },
   {
+    id: "devideosrc",
+    label: "DeVideoSrc",
+    tag: null,
+    note: "🇩🇪",
+    supportsProgress: true,
+    progressViaFrames: true, // player may sit in a nested provider iframe -> main-process frame query
+    skipResetGuard: true, // no quality-change reset -> don't "seek back" after a manual rewind
+    idType: "imdb", // needs an IMDb ID (tt…) instead of the TMDB ID
+    colorParam: "color", // hex WITH # (URLSearchParams encodes it as %23)
+    colorWithHash: true,
+    langParam: null,
+    params: {
+      autoplay: "1",
+    },
+    movieUrl: (id) => `https://devideosrc.co/custom/movie/${id}`,
+    tvUrl: (id, season, ep) =>
+      `https://devideosrc.co/custom/serial/${id}/${season}/${ep}`,
+  },
+  {
     id: "allmanga",
     label: "AllManga",
     tag: "ANIME",
@@ -204,7 +223,7 @@ export const PLAYER_SOURCES = [
 ];
 
 // Sources that require a transparent webRequest intercept to load properly
-export const NEEDS_INTERCEPT = ["vidsrc"];
+export const NEEDS_INTERCEPT = ["vidsrc", "devideosrc"];
 
 export const getSourceUrl = (
   sourceId,
@@ -219,6 +238,8 @@ export const getSourceUrl = (
 ) => {
   const src =
     PLAYER_SOURCES.find((s) => s.id === sourceId) ?? PLAYER_SOURCES[0];
+  // No usable ID yet (e.g. IMDb ID still being resolved) -> no URL
+  if (!id) return null;
   const baseUrl =
     type === "movie" ? src.movieUrl(id) : src.tvUrl(id, season, ep);
   const url = new URL(baseUrl);
@@ -229,7 +250,8 @@ export const getSourceUrl = (
 
   // Inject accent color into the player if the source supports it
   if (accentColor && src.colorParam) {
-    url.searchParams.set(src.colorParam, accentColor.replace(/^#/, ""));
+    const hex = accentColor.replace(/^#/, "");
+    url.searchParams.set(src.colorParam, src.colorWithHash ? `#${hex}` : hex);
   }
 
   if (subtitleLang && src.langParam) {
@@ -245,11 +267,50 @@ export const getSourceUrl = (
   return url.toString();
 };
 
+export const sourceNeedsImdb = (sourceId) =>
+  PLAYER_SOURCES.find((s) => s.id === sourceId)?.idType === "imdb";
+
+// ── TMDB -> IMDb ID conversion ────────────────────────────────────────────────
+// IMDb IDs never change, so they are cached for the whole session (separately
+// from the 5 min tmdbFetch cache). In-flight requests are de-duplicated.
+const _imdbCache = new Map(); // "movie:123" -> "tt0123456"
+const _imdbPending = new Map(); // "movie:123" -> Promise<string>
+
+/**
+ * Resolve the IMDb ID for a TMDB movie / TV show.
+ * @param {"movie"|"tv"} type
+ * @param {number|string} tmdbId
+ * @param {string} apiKey
+ * @returns {Promise<string>} e.g. "tt0133093" (rejects if TMDB has none)
+ */
+export function fetchImdbId(type, tmdbId, apiKey) {
+  const kind = type === "movie" ? "movie" : "tv";
+  const key = `${kind}:${tmdbId}`;
+  if (_imdbCache.has(key)) return Promise.resolve(_imdbCache.get(key));
+  if (_imdbPending.has(key)) return _imdbPending.get(key);
+
+  const p = tmdbFetch(`/${kind}/${tmdbId}/external_ids`, apiKey)
+    .then((data) => {
+      const imdb = data?.imdb_id;
+      if (!imdb || !/^tt\d+$/.test(imdb)) {
+        throw new Error(`No IMDb ID found for TMDB ${kind} ${tmdbId}`);
+      }
+      _imdbCache.set(key, imdb);
+      return imdb;
+    })
+    .finally(() => _imdbPending.delete(key));
+  _imdbPending.set(key, p);
+  return p;
+}
+
 export const sourceSupportsProgress = (sourceId) =>
   PLAYER_SOURCES.find((s) => s.id === sourceId)?.supportsProgress ?? false;
 
 export const sourceProgressViaFrames = (sourceId) =>
   PLAYER_SOURCES.find((s) => s.id === sourceId)?.progressViaFrames ?? false;
+
+export const sourceSkipsResetGuard = (sourceId) =>
+  PLAYER_SOURCES.find((s) => s.id === sourceId)?.skipResetGuard ?? false;
 
 export const sourceIsAsync = (sourceId) =>
   PLAYER_SOURCES.find((s) => s.id === sourceId)?.async ?? false;
