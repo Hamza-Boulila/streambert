@@ -23,6 +23,7 @@ import {
   sourceIsAsync,
   sourceSupportsAnime,
   sourceIsAnimeCapable,
+  sourceIsMovieOnly,
   getAnimeSourceUrl,
   fetchAnilistData,
   fetchEpisodeGroup,
@@ -716,6 +717,14 @@ export default function TVPage({
       mounted = false;
     };
   }, [item.id, isAnime]);
+
+  // Movie-only sources (e.g. KinoHub) can't play series -> fall back to the
+  // default source for this page (the saved choice is kept for the movie page)
+  useEffect(() => {
+    if (sourceIsMovieOnly(playerSource)) {
+      setPlayerSource(NON_ANIME_DEFAULT_SOURCE);
+    }
+  }, [playerSource]);
 
   // Resolve allmanga episode URL via main-process IPC (GraphQL, no CORS)
   useEffect(() => {
@@ -1900,7 +1909,7 @@ export default function TVPage({
                     </span>
                   </div>
                 )}
-                {/* IMDb-ID conversion failed (sources that need an IMDb ID) */}
+                {/* ID conversion failed (sources that need an IMDb / Kinopoisk ID) */}
             {srcId.error && (
               <div
                 style={{
@@ -1918,7 +1927,7 @@ export default function TVPage({
               >
                 <span style={{ fontSize: 28 }}>⚠️</span>
                 <span style={{ fontSize: 14, color: "var(--text2)" }}>
-                  Could not get an IMDb ID for this title
+                  Could not resolve the {srcId.idLabel} for this title
                 </span>
                 <span style={{ fontSize: 12, color: "var(--text3)" }}>
                   {srcId.error}. Try a different source.
@@ -2254,7 +2263,7 @@ export default function TVPage({
                     style={{ top: menuPos.top, left: menuPos.left }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {PLAYER_SOURCES.map((src) => (
+                    {PLAYER_SOURCES.filter((src) => !src.movieOnly).map((src) => (
                       <button
                         key={src.id}
                         className={

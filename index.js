@@ -39,6 +39,7 @@ const _bench = (label) =>
 
 // -- Sub-modules ---------------------------------------------------------------
 const blockStats = require("./src/ipc/blockStats");
+const siteTweaks = require("./src/ipc/siteTweaks");
 const storageIpc = require("./src/ipc/storage");
 const downloadsIpc = require("./src/ipc/downloads");
 const subtitlesIpc = require("./src/ipc/subtitles");
@@ -127,6 +128,20 @@ const BLOCKED_HOSTS = [
   "*://*.todditehexarch.com/*",
   "*://uniolaicecaps.com/*",
   "*://*.uniolaicecaps.com/*",
+  "*://alloha.tv/*",
+  "*://*.alloha.tv/*",
+  "*://pc.alloviewroll.com/*",
+  "*://yadro.ru/*",
+  "*://*.yadro.ru/*",
+  "*://getaim.org/*",
+  "*://*.getaim.org/*",
+  "*://myangular.life/*",
+  "*://*.myangular.life/*",
+  "*://rstprgapipt.com/*",
+  "*://*.rstprgapipt.com/*",
+  "*://veselchaga.link/*",
+  "*://webvisor.org/*",
+  "*://*.webvisor.org/*",
 ];
 
 // -- Module-level state --------------------------------------------------------
@@ -296,6 +311,17 @@ function createWindow() {
   // Player/trailer sessions are configured on the first webview attach or
   // when the pop-out window opens, whichever comes first.
 
+  // Configure the player/trailer sessions BEFORE the guest is created, so the
+  // very first player load already has ad blocking + document-start guards.
+  mainWindow.webContents.on("will-attach-webview", () => {
+    if (sessionsConfigured) return;
+    sessionsConfigured = true;
+    setupSession(
+      session.fromPartition("persist:player"),
+      session.fromPartition("persist:trailer"),
+    );
+  });
+
   // Block popups from webviews, intercept fullscreen, lazy-init sessions
   mainWindow.webContents.on("did-attach-webview", (_, wc) => {
     if (!sessionsConfigured) {
@@ -310,6 +336,8 @@ function createWindow() {
       if (wc.session === session.fromPartition("persist:player")) {
         playerWcIds.add(wc.id);
         wc.once("destroyed", () => playerWcIds.delete(wc.id));
+        // Per-site CSS (e.g. show only the player on KinoHub)
+        siteTweaks.attach(wc);
       }
     } catch {}
 
@@ -472,6 +500,7 @@ ipcMain.handle("open-pip-window", (_, { url, title }) => {
 
   // Block all popup windows from the streaming site and any nested frames
   pipWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  siteTweaks.attach(pipWindow.webContents);
 
   // If the site uses <webview> elements (unlikely but safe), block there too
   pipWindow.webContents.on("did-attach-webview", (_, wc) => {

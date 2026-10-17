@@ -1017,7 +1017,7 @@ export default function MoviePage({
                 </span>
               </div>
             )}
-            {/* IMDb-ID conversion failed (sources that need an IMDb ID) */}
+            {/* ID conversion failed (sources that need an IMDb / Kinopoisk ID) */}
             {srcId.error && (
               <div
                 style={{
@@ -1035,7 +1035,7 @@ export default function MoviePage({
               >
                 <span style={{ fontSize: 28 }}>⚠️</span>
                 <span style={{ fontSize: 14, color: "var(--text2)" }}>
-                  Could not get an IMDb ID for this title
+                  Could not resolve the {srcId.idLabel} for this title
                 </span>
                 <span style={{ fontSize: 12, color: "var(--text3)" }}>
                   {srcId.error}. Try a different source.

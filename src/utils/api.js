@@ -123,6 +123,7 @@ export const tmdbFetch = async (path, apiKey) => {
 // https://vidnest.fun
 // https://devideosrc.co/docs
 // https://frembed.bar/api-docs
+// https://on.kinohub.vip/
 
 // ── Player Sources ────────────────────────────────────────────────────────────
 // supportsProgress: true = executeJavaScript tracking works for this source
@@ -148,8 +149,9 @@ export const PLAYER_SOURCES = [
     id: "peachify",
     label: "Peachify",
     tag: null,
-    note: "Movies only",
+    note: null,
     supportsProgress: true,
+    movieOnly: true,
     colorParam: "accent", // hex without # → e.g. "e50914"
     langParam: "sub",
     params: {
@@ -248,6 +250,20 @@ export const PLAYER_SOURCES = [
       `https://frembed.bar/embed/serie/${id}?sa=${season}&epi=${ep}`,
   },
   {
+    id: "kinohub",
+    label: "KinoHub",
+    tag: null,
+    note: "🇷🇺",
+    supportsProgress: true,
+    progressViaFrames: true, // player may sit in a nested iframe -> main-process frame query
+    idType: "kinopoisk", // needs a Kinopoisk ID (resolved via Wikidata)
+    movieOnly: true, // series support not implemented yet
+    colorParam: null,
+    langParam: null,
+    params: {},
+    movieUrl: (id) => `https://on.kinohub.vip/movie/${id}`,
+  },
+  {
     id: "allmanga",
     label: "AllManga",
     tag: "ANIME",
@@ -261,7 +277,7 @@ export const PLAYER_SOURCES = [
 ];
 
 // Sources that require a transparent webRequest intercept to load properly
-export const NEEDS_INTERCEPT = ["vidsrc", "devideosrc", "frembed"];
+export const NEEDS_INTERCEPT = ["vidsrc", "devideosrc", "frembed", "kinohub"];
 
 export const getSourceUrl = (
   sourceId,
@@ -276,8 +292,10 @@ export const getSourceUrl = (
 ) => {
   const src =
     PLAYER_SOURCES.find((s) => s.id === sourceId) ?? PLAYER_SOURCES[0];
-  // No usable ID yet (e.g. IMDb ID still being resolved) -> no URL
+  // No usable ID yet (e.g. IMDb/Kinopoisk ID still being resolved) -> no URL
   if (!id) return null;
+  // Movie-only source requested for a series -> no URL
+  if (type !== "movie" && !src.tvUrl) return null;
   const baseUrl =
     type === "movie" ? src.movieUrl(id) : src.tvUrl(id, season, ep);
   const url = new URL(baseUrl);
@@ -338,6 +356,70 @@ export function fetchImdbId(type, tmdbId, apiKey) {
     })
     .finally(() => _imdbPending.delete(key));
   _imdbPending.set(key, p);
+  return p;
+}
+
+// Which ID a source expects: "tmdb" (default) | "imdb" | "kinopoisk"
+export const sourceIdType = (sourceId) =>
+  PLAYER_SOURCES.find((s) => s.id === sourceId)?.idType ?? "tmdb";
+
+export const sourceNeedsKinopoisk = (sourceId) =>
+  sourceIdType(sourceId) === "kinopoisk";
+
+// Source can only play movies (no series route yet)
+export const sourceIsMovieOnly = (sourceId) =>
+  PLAYER_SOURCES.find((s) => s.id === sourceId)?.movieOnly ?? false;
+
+// ── TMDB -> Kinopoisk ID conversion (via Wikidata) ────────────────────────────
+// Wikidata properties: P2603 Kinopoisk film ID, P4947 TMDB movie ID,
+// P4983 TMDB TV series ID, P345 IMDb ID.
+// Kinopoisk IDs never change -> cached for the whole session, in-flight
+// requests are de-duplicated.
+const WIKIDATA_SPARQL = "https://query.wikidata.org/sparql";
+const _kpCache = new Map(); // "movie:123" -> "5494049"
+const _kpPending = new Map(); // "movie:123" -> Promise<string>
+
+// value is validated by the callers (digits / tt+digits) before interpolation
+async function _wikidataKinopoisk(prop, value) {
+  const query = `SELECT ?kp WHERE { ?item wdt:${prop} "${value}" . ?item wdt:P2603 ?kp . } LIMIT 1`;
+  const res = await fetch(
+    `${WIKIDATA_SPARQL}?format=json&query=${encodeURIComponent(query)}`,
+  );
+  if (!res.ok) throw new Error(`Wikidata ${res.status}`);
+  const data = await res.json();
+  const kp = data?.results?.bindings?.[0]?.kp?.value;
+  return /^\d+$/.test(kp ?? "") ? kp : null;
+}
+
+/**
+ * Resolve the Kinopoisk ID for a TMDB movie / TV show via Wikidata.
+ * 1st try: TMDB ID, 2nd try (fallback): IMDb ID.
+ * @returns {Promise<string>} e.g. "5494049" (rejects if Wikidata has none)
+ */
+export function fetchKinopoiskId(type, tmdbId, apiKey) {
+  const kind = type === "movie" ? "movie" : "tv";
+  const key = `${kind}:${tmdbId}`;
+  if (_kpCache.has(key)) return Promise.resolve(_kpCache.get(key));
+  if (_kpPending.has(key)) return _kpPending.get(key);
+
+  const p = (async () => {
+    if (!/^\d+$/.test(String(tmdbId))) {
+      throw new Error(`Invalid TMDB id ${tmdbId}`);
+    }
+    const tmdbProp = kind === "movie" ? "P4947" : "P4983";
+    let kp = await _wikidataKinopoisk(tmdbProp, String(tmdbId));
+    if (!kp) {
+      // Fallback: some Wikidata items only carry the IMDb ID
+      const imdb = await fetchImdbId(kind, tmdbId, apiKey).catch(() => null);
+      if (imdb && /^tt\d+$/.test(imdb)) {
+        kp = await _wikidataKinopoisk("P345", imdb);
+      }
+    }
+    if (!kp) throw new Error(`No Kinopoisk ID found for TMDB ${kind} ${tmdbId}`);
+    _kpCache.set(key, kp);
+    return kp;
+  })().finally(() => _kpPending.delete(key));
+  _kpPending.set(key, p);
   return p;
 }
 
