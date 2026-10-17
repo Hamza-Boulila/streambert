@@ -76,9 +76,13 @@ function ExternalLink({ href, className, children }) {
     <a
       className={className}
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       onClick={(e) => {
-        e.preventDefault();
-        window.electron.openExternal(href);
+        if (window.electron?.openExternal && !window.electron?._isWebPolyfill) {
+          e.preventDefault();
+          window.electron.openExternal(href);
+        }
       }}
     >
       {children}

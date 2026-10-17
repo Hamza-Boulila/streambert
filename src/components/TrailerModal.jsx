@@ -112,16 +112,20 @@ export default function TrailerModal({ trailerKey, title, onClose }) {
     if (!wv || !currentSrc) return;
 
     const onLoad = () => {
-      wv.executeJavaScript(DETECT_BOT_JS)
-        .then((isBot) => {
-          if (isBot) {
-            tryNextInstance();
-          } else {
-            wv.executeJavaScript(SETUP_JS).catch(() => {});
-            setStatusMsg(null);
-          }
-        })
-        .catch(() => tryNextInstance());
+      if (typeof wv.executeJavaScript === "function") {
+        wv.executeJavaScript(DETECT_BOT_JS)
+          .then((isBot) => {
+            if (isBot) {
+              tryNextInstance();
+            } else {
+              wv.executeJavaScript(SETUP_JS).catch(() => {});
+              setStatusMsg(null);
+            }
+          })
+          .catch(() => tryNextInstance());
+      } else {
+        setStatusMsg(null);
+      }
     };
 
     const onFailLoad = () => {
@@ -132,29 +136,41 @@ export default function TrailerModal({ trailerKey, title, onClose }) {
       const instanceBase = currentSrc.split("/embed/")[0];
       if (!e.url.startsWith(instanceBase)) {
         e.preventDefault();
-        window.electron?.openExternal(e.url);
+        if (window.electron?.openExternal) {
+          window.electron.openExternal(e.url);
+        } else {
+          window.open(e.url, "_blank", "noopener,noreferrer");
+        }
       }
     };
 
     const endedPoll = setInterval(() => {
-      wv.executeJavaScript("!!window.__trailerEnded")
-        .then((ended) => {
-          if (ended) {
-            clearInterval(endedPoll);
-            setTimeout(onClose, 1200);
-          }
-        })
-        .catch(() => {});
+      if (typeof wv.executeJavaScript === "function") {
+        wv.executeJavaScript("!!window.__trailerEnded")
+          .then((ended) => {
+            if (ended) {
+              clearInterval(endedPoll);
+              setTimeout(onClose, 1200);
+            }
+          })
+          .catch(() => {});
+      }
     }, 800);
 
-    wv.addEventListener("did-finish-load", onLoad);
-    wv.addEventListener("did-fail-load", onFailLoad);
-    wv.addEventListener("will-navigate", onWillNavigate);
+    if (wv.addEventListener) {
+      wv.addEventListener("load", onLoad);
+      wv.addEventListener("did-finish-load", onLoad);
+      wv.addEventListener("did-fail-load", onFailLoad);
+      wv.addEventListener("will-navigate", onWillNavigate);
+    }
     return () => {
       clearInterval(endedPoll);
-      wv.removeEventListener("did-finish-load", onLoad);
-      wv.removeEventListener("did-fail-load", onFailLoad);
-      wv.removeEventListener("will-navigate", onWillNavigate);
+      if (wv.removeEventListener) {
+        wv.removeEventListener("load", onLoad);
+        wv.removeEventListener("did-finish-load", onLoad);
+        wv.removeEventListener("did-fail-load", onFailLoad);
+        wv.removeEventListener("will-navigate", onWillNavigate);
+      }
     };
   }, [currentSrc, tryNextInstance, onClose]);
 
@@ -220,11 +236,11 @@ export default function TrailerModal({ trailerKey, title, onClose }) {
           )}
 
           {currentSrc && (
-            <webview
+            <iframe
               ref={webviewRef}
               src={currentSrc}
-              partition="persist:trailer"
-              allowpopups="false"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
               style={{
                 position: "absolute",
                 inset: 0,
@@ -234,6 +250,7 @@ export default function TrailerModal({ trailerKey, title, onClose }) {
                 opacity: statusMsg ? 0 : 1,
                 transition: "opacity 0.2s",
               }}
+              onLoad={() => setStatusMsg(null)}
             />
           )}
         </div>

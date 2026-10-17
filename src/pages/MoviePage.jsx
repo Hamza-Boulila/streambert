@@ -508,9 +508,14 @@ export default function MoviePage({
     if (!wv || !playing || !gamepadEnabled) return;
 
     const inject = () => {
-      wv.executeJavaScript(GAMEPAD_PLAYER_SCRIPT).catch(() => {});
+      if (typeof wv.executeJavaScript === "function") {
+        wv.executeJavaScript(GAMEPAD_PLAYER_SCRIPT).catch(() => {});
+      }
     };
-    wv.addEventListener("dom-ready", inject);
+    if (wv.addEventListener) {
+      wv.addEventListener("dom-ready", inject);
+      wv.addEventListener("load", inject);
+    }
     try {
       inject();
     } catch {}
@@ -518,34 +523,47 @@ export default function MoviePage({
     // Poll for a B-button "leave the player" request from the guest script.
     const exitPoll = setInterval(async () => {
       try {
-        const requested = await wv.executeJavaScript(GAMEPAD_EXIT_CHECK_JS);
-        if (requested) {
-          wv.executeJavaScript(GAMEPAD_EXIT_RESET_JS).catch(() => {});
-          setPlaying(false);
+        if (typeof wv.executeJavaScript === "function") {
+          const requested = await wv.executeJavaScript(GAMEPAD_EXIT_CHECK_JS);
+          if (requested) {
+            wv.executeJavaScript(GAMEPAD_EXIT_RESET_JS).catch(() => {});
+            setPlaying(false);
+          }
         }
       } catch {}
     }, 250);
 
     return () => {
-      wv.removeEventListener("dom-ready", inject);
+      if (wv.removeEventListener) {
+        wv.removeEventListener("dom-ready", inject);
+        wv.removeEventListener("load", inject);
+      }
       clearInterval(exitPoll);
       try {
-        wv.executeJavaScript(GAMEPAD_CLEANUP_JS);
+        if (typeof wv.executeJavaScript === "function") {
+          wv.executeJavaScript(GAMEPAD_CLEANUP_JS);
+        }
       } catch {}
     };
   }, [playing, gamepadEnabled]);
 
-  // Attach webview load events so we know when the new source has painted
+  // Attach webview/iframe load events so we know when the new source has painted
   useEffect(() => {
     if (!playing) return;
     const wv = webviewRef.current;
     if (!wv) return;
     const done = () => setWebviewLoading(false);
-    wv.addEventListener("did-finish-load", done);
-    wv.addEventListener("did-fail-load", done);
+    if (wv.addEventListener) {
+      wv.addEventListener("load", done);
+      wv.addEventListener("did-finish-load", done);
+      wv.addEventListener("did-fail-load", done);
+    }
     return () => {
-      wv.removeEventListener("did-finish-load", done);
-      wv.removeEventListener("did-fail-load", done);
+      if (wv.removeEventListener) {
+        wv.removeEventListener("load", done);
+        wv.removeEventListener("did-finish-load", done);
+        wv.removeEventListener("did-fail-load", done);
+      }
     };
   }, [playing, playerSource, item.id]);
 
@@ -568,11 +586,11 @@ export default function MoviePage({
             result = await window.electron.queryVideoProgress(
               pipWebContentsIdRef.current,
             );
-          } else if (progressViaFrames && window.electron?.queryVideoProgress) {
+          } else if (progressViaFrames && window.electron?.queryVideoProgress && typeof wv.getWebContentsId === "function") {
             result = await window.electron.queryVideoProgress(
               wv.getWebContentsId(),
             );
-          } else {
+          } else if (typeof wv.executeJavaScript === "function") {
             result = await wv.executeJavaScript(`
               (() => {
                 const v = document.querySelector('video')
@@ -1014,7 +1032,7 @@ export default function MoviePage({
                 </button>
               </div>
             )}
-            <webview
+            <iframe
               ref={webviewRef}
               src={
                 pipOpen
@@ -1032,9 +1050,8 @@ export default function MoviePage({
                         playerSubLang,
                       )
               }
-              partition="persist:player"
-              allowpopups="false"
-              sandbox="allow-scripts allow-same-origin allow-forms"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
               style={{
                 position: "absolute",
                 inset: 0,
@@ -1047,6 +1064,7 @@ export default function MoviePage({
                     ? "hidden"
                     : "visible",
               }}
+              onLoad={() => setWebviewLoading(false)}
             />
             {/* Left-side overlay button group, flex row, no fixed px offsets */}
             <div className="player-overlay-group">

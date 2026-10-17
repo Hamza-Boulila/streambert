@@ -159,20 +159,30 @@ export function formatBytes(bytes) {
 //   "subdlApiKey" - SubDL API key
 //   "wyzieApiKey" - Wyzie API key
 
-const _isElectronSecure =
-  typeof window !== "undefined" && !!window.electron?.secureGet;
-
 export const secureStorage = {
-  /** Read an encrypted value. Returns null if not set. */
+  /** Read an encrypted/secured value. */
   async get(key) {
-    if (!_isElectronSecure) return null;
-    return window.electron.secureGet(key);
+    if (typeof window !== "undefined" && window.electron?.secureGet) {
+      try {
+        const val = await window.electron.secureGet(key);
+        if (val) return val;
+      } catch {}
+    }
+    return storage.get(`sec_${key}`);
   },
 
-  /** Write an encrypted value. Pass null/empty to delete. */
+  /** Write an encrypted/secured value. Pass null/empty to delete. */
   async set(key, value) {
-    if (!_isElectronSecure) return;
-    return window.electron.secureSet(key, value ?? "");
+    if (typeof window !== "undefined" && window.electron?.secureSet) {
+      try {
+        await window.electron.secureSet(key, value ?? "");
+      } catch {}
+    }
+    if (value === null || value === undefined || value === "") {
+      storage.remove(`sec_${key}`);
+    } else {
+      storage.set(`sec_${key}`, value);
+    }
   },
 };
 

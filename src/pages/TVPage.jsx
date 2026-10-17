@@ -1188,15 +1188,18 @@ export default function TVPage({
     };
   }, []);
 
-  // Attach webview load events so we know when the new source has painted.
+  // Attach webview/iframe load events so we know when the new source has painted.
   // Also poll for video duration so AniSkip markers appear without waiting for the 5s progress tick.
   useEffect(() => {
     if (!playing) return;
     const wv = webviewRef.current;
     if (!wv) return;
     const done = () => setWebviewLoading(false);
-    wv.addEventListener("did-finish-load", done);
-    wv.addEventListener("did-fail-load", done);
+    if (wv.addEventListener) {
+      wv.addEventListener("load", done);
+      wv.addEventListener("did-finish-load", done);
+      wv.addEventListener("did-fail-load", done);
+    }
 
     // Poll up to 30s for video duration (metadata may load after buffering starts)
     let attempts = 0;
@@ -1206,21 +1209,26 @@ export default function TVPage({
         return;
       }
       try {
-        const dur = await wv.executeJavaScript(
-          `(() => { const v = document.querySelector('video'); return (v && v.duration > 0 && isFinite(v.duration)) ? v.duration : null; })()`,
-        );
-        if (dur) {
-          durationRef.current = dur;
-          // let markers re-render
-          setSkipTimings((t) => (t ? { ...t } : t));
-          clearInterval(pollDuration);
+        if (typeof wv.executeJavaScript === "function") {
+          const dur = await wv.executeJavaScript(
+            `(() => { const v = document.querySelector('video'); return (v && v.duration > 0 && isFinite(v.duration)) ? v.duration : null; })()`,
+          );
+          if (dur) {
+            durationRef.current = dur;
+            // let markers re-render
+            setSkipTimings((t) => (t ? { ...t } : t));
+            clearInterval(pollDuration);
+          }
         }
       } catch {}
     }, 1000);
 
     return () => {
-      wv.removeEventListener("did-finish-load", done);
-      wv.removeEventListener("did-fail-load", done);
+      if (wv.removeEventListener) {
+        wv.removeEventListener("load", done);
+        wv.removeEventListener("did-finish-load", done);
+        wv.removeEventListener("did-fail-load", done);
+      }
       clearInterval(pollDuration);
     };
   }, [playing, playerSource, item.id, selectedEp?.episode_number]);
@@ -1259,9 +1267,11 @@ export default function TVPage({
     const wv = webviewRef.current;
     if (!wv) return;
     try {
-      await wv.executeJavaScript(
-        `(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${endTime}; })()`,
-      );
+      if (typeof wv.executeJavaScript === "function") {
+        await wv.executeJavaScript(
+          `(() => { const v = document.querySelector('video'); if (v) v.currentTime = ${endTime}; })()`,
+        );
+      }
     } catch {}
     setSkipPrompt(null);
   }, [skipPrompt, skipTimings]);
@@ -1271,14 +1281,14 @@ export default function TVPage({
   useEffect(() => {
     if (!skipPrompt) return;
     const wv = webviewRef.current;
-    if (!wv) return;
+    if (!wv || !wv.addEventListener) return;
     const handler = (e) => {
       if (e.key === "Return" && e.type === "keyDown") {
         handleManualSkip();
       }
     };
     wv.addEventListener("before-input-event", handler);
-    return () => wv.removeEventListener("before-input-event", handler);
+    return () => wv.removeEventListener?.("before-input-event", handler);
   }, [skipPrompt, handleManualSkip]);
 
   // Unified progress/skip timing tick for Allmanga and other sources.
@@ -1310,11 +1320,11 @@ export default function TVPage({
             result = await window.electron.queryVideoProgress(
               pipWebContentsIdRef.current,
             );
-          } else if (progressViaFrames && window.electron?.queryVideoProgress) {
+          } else if (progressViaFrames && window.electron?.queryVideoProgress && typeof wv.getWebContentsId === "function") {
             result = await window.electron.queryVideoProgress(
               wv.getWebContentsId(),
             );
-          } else {
+          } else if (typeof wv.executeJavaScript === "function") {
             result = await wv.executeJavaScript(`
               (() => {
                 const v = document.querySelector('video')
@@ -1454,7 +1464,7 @@ export default function TVPage({
   const seekBy = useCallback(async (seconds) => {
     try {
       const wv = webviewRef.current;
-      if (!wv) return;
+      if (!wv || typeof wv.executeJavaScript !== "function") return;
       await wv.executeJavaScript(`
         (() => {
           const v = document.querySelector('video');
@@ -1469,25 +1479,35 @@ export default function TVPage({
     if (!wv || !playing || !isAsync) return;
 
     const inject = () => {
-      wv.executeJavaScript(INJECT_SKIP_CONTROLS).catch(() => {});
+      if (typeof wv.executeJavaScript === "function") {
+        wv.executeJavaScript(INJECT_SKIP_CONTROLS).catch(() => {});
+      }
     };
 
-    wv.addEventListener("dom-ready", inject);
+    if (wv.addEventListener) {
+      wv.addEventListener("dom-ready", inject);
+      wv.addEventListener("load", inject);
+    }
 
     try {
       inject();
     } catch {}
 
     return () => {
-      wv.removeEventListener("dom-ready", inject);
+      if (wv.removeEventListener) {
+        wv.removeEventListener("dom-ready", inject);
+        wv.removeEventListener("load", inject);
+      }
       try {
-        wv.executeJavaScript(`
-          (() => {
-            const el = document.getElementById('__skip-ui');
-            if (el) el.remove();
-            window.__skipControlsInjected = false;
-          })()
-        `);
+        if (typeof wv.executeJavaScript === "function") {
+          wv.executeJavaScript(`
+            (() => {
+              const el = document.getElementById('__skip-ui');
+              if (el) el.remove();
+              window.__skipControlsInjected = false;
+            })()
+          `);
+        }
       } catch {}
     };
   }, [playing, playerSource]);
@@ -1521,9 +1541,14 @@ export default function TVPage({
     if (!wv || !playing || !gamepadEnabled) return;
 
     const inject = () => {
-      wv.executeJavaScript(GAMEPAD_PLAYER_SCRIPT).catch(() => {});
+      if (typeof wv.executeJavaScript === "function") {
+        wv.executeJavaScript(GAMEPAD_PLAYER_SCRIPT).catch(() => {});
+      }
     };
-    wv.addEventListener("dom-ready", inject);
+    if (wv.addEventListener) {
+      wv.addEventListener("dom-ready", inject);
+      wv.addEventListener("load", inject);
+    }
     try {
       inject();
     } catch {}
@@ -1531,10 +1556,12 @@ export default function TVPage({
     // Poll for a B-button "leave the player" request from the guest script.
     const exitPoll = setInterval(async () => {
       try {
-        const requested = await wv.executeJavaScript(GAMEPAD_EXIT_CHECK_JS);
-        if (requested) {
-          wv.executeJavaScript(GAMEPAD_EXIT_RESET_JS).catch(() => {});
-          setPlaying(false);
+        if (typeof wv.executeJavaScript === "function") {
+          const requested = await wv.executeJavaScript(GAMEPAD_EXIT_CHECK_JS);
+          if (requested) {
+            wv.executeJavaScript(GAMEPAD_EXIT_RESET_JS).catch(() => {});
+            setPlaying(false);
+          }
         }
       } catch {}
     }, 250);
@@ -2088,7 +2115,7 @@ export default function TVPage({
                     </div>
                   </div>
                 )}
-                <webview
+                <iframe
                   ref={webviewRef}
                   src={
                     pipOpen
@@ -2106,9 +2133,8 @@ export default function TVPage({
                             playerSubLang,
                           ) || "about:blank"
                   }
-                  partition="persist:player"
-                  allowpopups="false"
-                  sandbox="allow-scripts allow-same-origin allow-forms"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                  allowFullScreen
                   style={{
                     position: "absolute",
                     inset: 0,
@@ -2124,6 +2150,7 @@ export default function TVPage({
                         : "visible",
                   }}
                   tabIndex={-1}
+                  onLoad={() => setWebviewLoading(false)}
                 />
                 {/* Left-side overlay button group, flex row, no fixed px offsets */}
                 <div className="player-overlay-group">

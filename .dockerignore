@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.git
+.github
+screenshots
+*.log
+.DS_Store
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.exe

@@ -228,15 +228,29 @@ export default function Sidebar({
           icon={<SettingsIcon />}
           label="Settings"
         />
-        <button
-          className="sidebar-btn"
-          onClick={() => window.electron?.quitApp?.()}
-          title="Quit App"
-          style={{ color: "#e53e3e", marginTop: 4 }}
-        >
-          <QuitIcon />
-          <span className="tooltip">Quit App</span>
-        </button>
+        {window.electron && !window.electron?._isWebPolyfill ? (
+          <button
+            className="sidebar-btn"
+            onClick={() => window.electron?.quitApp?.()}
+            title="Quit App"
+            style={{ color: "#e53e3e", marginTop: 4 }}
+          >
+            <QuitIcon />
+            <span className="tooltip">Quit App</span>
+          </button>
+        ) : (
+          <button
+            className="sidebar-btn"
+            onClick={() => window.electron?.windowToggleMaximize?.()}
+            title="Fullscreen"
+            style={{ marginTop: 4 }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+            <span className="tooltip">Fullscreen</span>
+          </button>
+        )}
       </div>
     </div>
   );

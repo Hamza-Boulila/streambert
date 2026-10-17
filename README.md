@@ -1,20 +1,86 @@
-[![Downloads@latest](https://img.shields.io/github/downloads/truelockmc/streambert/latest/total?style=for-the-badge)](https://codeberg.org/truelockmc/streambert/releases/latest/)
-[![Release Version Badge](https://img.shields.io/github/v/release/truelockmc/streambert?style=for-the-badge)](https://github.com/truelockmc/streambert/releases)
-[![Issues Badge](https://img.shields.io/github/issues/truelockmc/streambert?style=for-the-badge)](https://github.com/truelockmc/streambert/issues)
-[![Closed Issues Badge](https://img.shields.io/github/issues-closed/truelockmc/streambert?color=%238256d0&style=for-the-badge)](https://github.com/truelockmc/streambert/issues?q=is%3Aissue+is%3Aclosed)<br>
+# Streambert (Web & Docker Edition)
 
-[![GitHub](https://img.shields.io/badge/GitHub-truelockmc%2Fstreambert-181717?style=for-the-badge&logo=github)](https://github.com/truelockmc/streambert)
-[![Codeberg](https://img.shields.io/badge/Codeberg-truelockmc%2Fstreambert-2185D0?style=for-the-badge&logo=codeberg)](https://codeberg.org/truelockmc/streambert)
-[![AUR Version](https://img.shields.io/aur/version/streambert-bin?style=for-the-badge&logo=archlinux)](https://aur.archlinux.org/packages/streambert-bin)
-# Streambert
-A cross-platform Electron Desktop App to stream and download any Movie, TV Series or Anime in the World. Zero Ads and Tracking[*](#privacy-disclaimer) <br></br>
-<a href="https://trendshift.io/repositories/31115" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/31115" alt="truelockmc%2Fstreambert | Trendshift" width="250" height="55"/></a>
+A modern, self-hosted Web Application & Docker container to stream any Movie, TV Series, or Anime in the world with zero ads and tracking.
+
+> **Fork Note:** This repository is a web-native fork of [truelockmc/streambert](https://github.com/truelockmc/streambert). Streambert was originally an Electron desktop application; this fork converts it into a browser-native web application that can be run anywhere via Docker or standard Node.js servers.
 
 ![Logo](public/logo.svg)
 
-[Installation](#requirements)
+## 🐳 Quick Start with Docker
+
+The easiest way to run Streambert Web is with Docker Compose:
+
+```bash
+# 1. Clone this repository
+git clone https://github.com/Hamza-Boulila/streambert.git
+cd streambert
+
+# 2. Start the container
+docker compose up -d
+
+# 3. Open in your browser
+# Navigate to http://localhost:3000
+```
+
+### Docker Compose Options
+
+You can optionally pre-configure your [free TMDB API Read Access Token](tmdb-tutorial.md) directly in `docker-compose.yml` or via environment variables:
+
+```yaml
+services:
+  streambert:
+    image: streambert-web:latest
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - TMDB_API_KEY=your_jwt_read_access_token_here
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped
+```
+
+Or pass it inline:
+```bash
+TMDB_API_KEY="eyJ..." docker compose up -d
+```
+
+---
+
+## 💻 Running Locally without Docker
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Build frontend
+npm run build
+
+# 3. Start web server
+npm start
+# App is live at http://localhost:3000
+
+# For local development with live reload:
+npm run dev
+```
+
+---
+
+## 🛠️ Key Changes in this Web Fork
+
+- **Browser Web Adapter**: Created [`src/utils/webAdapter.js`](src/utils/webAdapter.js) to replace Electron desktop IPC. Implements browser-native local storage for API keys and watch history, standard Web Notification API, external navigation, and HTML5 Fullscreen.
+- **Iframe Video Embeds**: Converted Electron-specific `<webview>` tags into standard `<iframe>` tags with full accelerometer, autoplay, encrypted-media, and fullscreen permissions.
+- **Provider Sandbox Compatibility**: Removed the restrictive `sandbox` attribute from player iframes to prevent video providers (Videasy, VidSrc, VidKing) from blocking playback with "Iframe Sandbox Detected" errors.
+- **Node.js & Express Backend**: Added [`server.js`](server.js) to serve the SPA client, manage health checks, and provide streaming APIs.
+- **AllManga Anime Resolver & Proxy**: Created [`src/server/allmangaService.js`](src/server/allmangaService.js) to resolve anime episodes, decipher GraphQL responses, and proxy video streams with HTTP 206 Partial Content range support.
+- **Subtitle Service**: Created [`src/server/subtitlesService.js`](src/server/subtitlesService.js) to search SubDL / Wyzie and extract subtitle ZIP archives.
+- **Multi-Stage Docker Image**: Minimal Alpine Linux Docker image running as a non-root user with automated healthcheck monitoring.
+
+---
 
 ## Why Streambert?
+
 - 🎦 **Streaming:** Stream any Movie, Anime or TV Series from around the World.
 - 📥 **Downloading:** Download anything you want to watch.
 - 📃 **Subtitles:** Download and manage Subtitles.
