@@ -4,3 +4,5 @@ download_config.ini
 dist/
 *.zip
 *secret.txt
+.env
+.env.local

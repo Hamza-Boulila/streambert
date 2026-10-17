@@ -5,6 +5,32 @@ const fs = require("fs");
 const allmangaService = require("./src/server/allmangaService");
 const subtitlesService = require("./src/server/subtitlesService");
 
+// Load environment variables from .env and .env.local files if present
+[".env", ".env.local"].forEach((file) => {
+  const envPath = path.join(__dirname, file);
+  if (fs.existsSync(envPath)) {
+    try {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      envContent.split("\n").forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) return;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx !== -1) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if (
+            (val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'"))
+          ) {
+            val = val.slice(1, -1);
+          }
+          process.env[key] = val;
+        }
+      });
+    } catch {}
+  }
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";

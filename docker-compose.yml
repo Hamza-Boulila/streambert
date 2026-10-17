@@ -8,10 +8,14 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
     environment:
       - PORT=3000
-      # Optional: Provide your TMDB JWT Read Access Token here to auto-authenticate
-      # - TMDB_API_KEY=eyJ...
+      - TMDB_API_KEY=${TMDB_API_KEY:-}
     volumes:
       - ./downloads:/app/downloads
     healthcheck:
