@@ -204,6 +204,7 @@ export const PLAYER_SOURCES = [
     langParam: null,
     params: {
       autoplay: "1",
+      muted: "0",
     },
     movieUrl: (id) => `https://devideosrc.co/custom/movie/${id}`,
     tvUrl: (id, season, ep) =>

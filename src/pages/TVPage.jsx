@@ -1176,9 +1176,10 @@ export default function TVPage({
     wv.addEventListener("did-finish-load", done);
     wv.addEventListener("did-fail-load", done);
 
-    // Poll up to 30s for video duration (metadata may load after buffering starts)
+    // Poll up to 30s for video duration (metadata may load after buffering starts).
+    // Only needed for AniSkip markers on async (anime) sources.
     let attempts = 0;
-    const pollDuration = setInterval(async () => {
+    const pollDuration = !isAsync ? null : setInterval(async () => {
       if (durationRef.current > 0 || attempts++ > 30) {
         clearInterval(pollDuration);
         return;
@@ -1201,7 +1202,7 @@ export default function TVPage({
       wv.removeEventListener("did-fail-load", done);
       clearInterval(pollDuration);
     };
-  }, [playing, playerSource, item.id, selectedEp?.episode_number]);
+  }, [playing, playerSource, isAsync, item.id, selectedEp?.episode_number]);
 
   // ── AniSkip: fetch timings when episode changes ───────────────────────────
   useEffect(() => {
@@ -2111,8 +2112,6 @@ export default function TVPage({
                   partition="persist:player"
                   allowpopups="false"
                   sandbox="allow-scripts allow-same-origin allow-forms"
-                  // Spoof a regular desktop Chrome UA
-                  useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
                   style={{
                     position: "absolute",
                     inset: 0,
