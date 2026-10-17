@@ -119,6 +119,14 @@ const BLOCKED_HOSTS = [
   "*://jwpltx.com/*",
   "*://*.jwpltx.com/*",
   "*://improving.duckduckgo.com/*",
+  "*://openfpcdn.io/*",
+  "*://phruk.org/*",
+  "*://welcomingexpulsion.com/*",
+  "*://pgo99.com/*",
+  "*://todditehexarch.com/*",
+  "*://*.todditehexarch.com/*",
+  "*://uniolaicecaps.com/*",
+  "*://*.uniolaicecaps.com/*",
 ];
 
 // -- Module-level state --------------------------------------------------------

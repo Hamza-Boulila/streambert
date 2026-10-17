@@ -121,9 +121,12 @@ export const tmdbFetch = async (path, apiKey) => {
 // https://vidfast.vc
 // https://vidrift.net/docs
 // https://vidnest.fun
+// https://devideosrc.co/docs
+// https://frembed.bar/api-docs
 
 // ── Player Sources ────────────────────────────────────────────────────────────
 // supportsProgress: true = executeJavaScript tracking works for this source
+//
 export const PLAYER_SOURCES = [
   {
     id: "vidsrc",
@@ -230,6 +233,21 @@ export const PLAYER_SOURCES = [
       `https://vidnest.fun/anime/${anilistId}/${ep}/${lang}`,
   },
   {
+    id: "frembed",
+    label: "Frembed",
+    tag: null, // movies, TV and anime (anime uses the normal movie/serie endpoints)
+    note: "🇫🇷",
+    supportsProgress: true,
+    progressViaFrames: true,
+    skipResetGuard: true, // no quality-change reset -> don't "seek back" after a manual rewind
+    colorParam: null,
+    langParam: null,
+    params: {},
+    movieUrl: (id) => `https://frembed.bar/embed/movie/${id}`,
+    tvUrl: (id, season, ep) =>
+      `https://frembed.bar/embed/serie/${id}?sa=${season}&epi=${ep}`,
+  },
+  {
     id: "allmanga",
     label: "AllManga",
     tag: "ANIME",
@@ -243,7 +261,7 @@ export const PLAYER_SOURCES = [
 ];
 
 // Sources that require a transparent webRequest intercept to load properly
-export const NEEDS_INTERCEPT = ["vidsrc", "devideosrc"];
+export const NEEDS_INTERCEPT = ["vidsrc", "devideosrc", "frembed"];
 
 export const getSourceUrl = (
   sourceId,
