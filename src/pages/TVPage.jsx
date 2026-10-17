@@ -21,6 +21,9 @@ import {
   sourceSkipsResetGuard,
   sourceProgressViaFrames,
   sourceIsAsync,
+  sourceSupportsAnime,
+  sourceIsAnimeCapable,
+  getAnimeSourceUrl,
   fetchAnilistData,
   fetchEpisodeGroup,
   buildAnilistSeasons,
@@ -692,11 +695,12 @@ export default function TVPage({
           if (mounted) setAnilistLoading(false);
         });
       // Switch to anime source if current source is not an anime source
-      const currentSrc = PLAYER_SOURCES.find((s) => s.id === playerSource);
-      if (!currentSrc?.tag) {
+      // (anime-only tagged sources and anime-capable ones like Vidnest are fine)
+      if (!sourceIsAnimeCapable(playerSource)) {
         const saved = storage.get("playerSource");
-        const savedSrc = PLAYER_SOURCES.find((s) => s.id === saved);
-        setPlayerSource(savedSrc?.tag ? saved : ANIME_DEFAULT_SOURCE);
+        setPlayerSource(
+          sourceIsAnimeCapable(saved) ? saved : ANIME_DEFAULT_SOURCE,
+        );
       }
     } else {
       setAnilistLoading(false);
@@ -950,6 +954,51 @@ export default function TVPage({
     const rawEpisode = selectedEp._tmdbAbsolute ?? selectedEp.episode_number;
     return applyEpisodeMapping(item.id, rawSeason, rawEpisode, episodeGroupMap);
   }, [selectedEp, selectedSeason, item.id, episodeGroupMap]);
+
+  // ── Direct (non-async) player URL ─────────────────────────────────────────
+  // Anime-capable sources (Vidnest) use their anime route: AniList id of the
+  // selected season + episode number inside that entry + sub/dub.
+  // Falls back to the regular TMDB route if no AniList data is available.
+  const playerDirectUrl = useMemo(() => {
+    if (isAnime && sourceSupportsAnime(playerSource)) {
+      // Wait for AniList data instead of loading the wrong (TMDB) route first
+      if (anilistLoading) return null;
+      const seasonEntry = anilistSeasons?.find(
+        (s) => s.seasonNum === selectedSeason,
+      );
+      const anilistId = seasonEntry?.id ?? (anilistData?.id || null);
+      const animeUrl = getAnimeSourceUrl(
+        playerSource,
+        anilistId,
+        selectedEp?.episode_number,
+        dubMode,
+      );
+      if (animeUrl) return animeUrl;
+    }
+    return getSourceUrl(
+      playerSource,
+      "tv",
+      srcId.id,
+      playerEp.season,
+      playerEp.episode,
+      {},
+      playerAccentColor,
+      playerSubLang,
+    );
+  }, [
+    isAnime,
+    playerSource,
+    anilistLoading,
+    anilistSeasons,
+    anilistData,
+    selectedSeason,
+    selectedEp,
+    dubMode,
+    srcId.id,
+    playerEp,
+    playerAccentColor,
+    playerSubLang,
+  ]);
 
   // ── Memoized current season episodes ──────────────────────────────────────
   // While episode group or AniList data is still loading, return [] to prevent
@@ -2098,16 +2147,7 @@ export default function TVPage({
                       ? "about:blank"
                       : isAsync
                         ? resolvedPlayerUrl || "about:blank"
-                        : getSourceUrl(
-                            playerSource,
-                            "tv",
-                            srcId.id,
-                            playerEp.season,
-                            playerEp.episode,
-                            {},
-                            playerAccentColor,
-                            playerSubLang,
-                          ) || "about:blank"
+                        : playerDirectUrl || "about:blank"
                   }
                   partition="persist:player"
                   allowpopups="false"
@@ -2145,8 +2185,8 @@ export default function TVPage({
                     {PLAYER_SOURCES.find((s) => s.id === playerSource)?.label ??
                       "Source"}
                   </button>
-                  {/* Sub/Dub toggle, only for AllManga */}
-                  {isAsync && (
+                  {/* Sub/Dub toggle: AllManga, and anime-capable sources (Vidnest) on anime titles */}
+                  {(isAsync || (isAnime && sourceSupportsAnime(playerSource))) && (
                     <button
                       className="player-overlay-btn"
                       onClick={() => {
@@ -2190,18 +2230,7 @@ export default function TVPage({
                         window.electron?.closePipWindow?.();
                         return;
                       }
-                      const url = isAsync
-                        ? resolvedPlayerUrl
-                        : getSourceUrl(
-                            playerSource,
-                            "tv",
-                            srcId.id,
-                            playerEp.season,
-                            playerEp.episode,
-                            {},
-                            playerAccentColor,
-                            playerSubLang,
-                          );
+                      const url = isAsync ? resolvedPlayerUrl : playerDirectUrl;
                       if (!url) return;
                       pipUrlRef.current = url;
                       window.electron?.openPipWindow?.(

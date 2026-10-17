@@ -118,6 +118,7 @@ const BLOCKED_HOSTS = [
   "*://imasdk.googleapis.com/*",
   "*://jwpltx.com/*",
   "*://*.jwpltx.com/*",
+  "*://improving.duckduckgo.com/*",
 ];
 
 // -- Module-level state --------------------------------------------------------

@@ -116,9 +116,11 @@ export const tmdbFetch = async (path, apiKey) => {
 };
 
 // Documentation:
-// https://www.videasy.to/docs
 // https://vsembed.su/api/
-// https://www.vidking.net/#documentation
+// https://peachify.top/
+// https://vidfast.vc
+// https://vidrift.net/docs
+// https://vidnest.fun
 
 // ── Player Sources ────────────────────────────────────────────────────────────
 // supportsProgress: true = executeJavaScript tracking works for this source
@@ -178,7 +180,7 @@ export const PLAYER_SOURCES = [
     id: "vidrift",
     label: "Vidrift",
     tag: null,
-    note: "Multi Lang",
+    note: "Multi Lang, Anime ✓", // Has Anime sub/dub and multi language support but not with anilistId
     supportsProgress: true,
     colorParam: "brandColor",
     langParam: "sub",
@@ -209,6 +211,23 @@ export const PLAYER_SOURCES = [
     movieUrl: (id) => `https://devideosrc.co/custom/movie/${id}`,
     tvUrl: (id, season, ep) =>
       `https://devideosrc.co/custom/serial/${id}/${season}/${ep}`,
+  },
+  {
+    id: "vidnest",
+    label: "Vidnest",
+    tag: null, // not anime-only -> works for movies/TV as well
+    note: "Anime ✓",
+    supportsProgress: true,
+    progressViaFrames: false,
+    supportsAnime: true, // has a dedicated anime route (AniList id + sub/dub)
+    colorParam: null, // no accent-colour query param documented
+    langParam: null,
+    params: {},
+    movieUrl: (id) => `https://vidnest.fun/movie/${id}`,
+    tvUrl: (id, season, ep) => `https://vidnest.fun/tv/${id}/${season}/${ep}`,
+    // Anime route: AniList id (not TMDB), episode number, "sub" | "dub"
+    animeUrl: (anilistId, ep, lang) =>
+      `https://vidnest.fun/anime/${anilistId}/${ep}/${lang}`,
   },
   {
     id: "allmanga",
@@ -315,6 +334,45 @@ export const sourceSkipsResetGuard = (sourceId) =>
 
 export const sourceIsAsync = (sourceId) =>
   PLAYER_SOURCES.find((s) => s.id === sourceId)?.async ?? false;
+
+// Source has its own anime route (AniList id + sub/dub) but is not anime-only
+export const sourceSupportsAnime = (sourceId) =>
+  PLAYER_SOURCES.find((s) => s.id === sourceId)?.supportsAnime ?? false;
+
+// Source is usable for anime: anime-only (tagged) or anime-capable
+export const sourceIsAnimeCapable = (sourceId) => {
+  const src = PLAYER_SOURCES.find((s) => s.id === sourceId);
+  return !!(src && (src.tag || src.supportsAnime));
+};
+
+/**
+ * Build the anime-route URL for sources that support it (e.g. Vidnest).
+ * @param {string} sourceId
+ * @param {number|string} anilistId AniList media id of the season/movie
+ * @param {number|string} episode   episode number inside that AniList entry
+ * @param {"sub"|"dub"} dubMode
+ * @returns {string|null} null if the source has no anime route or id is missing
+ */
+export const getAnimeSourceUrl = (
+  sourceId,
+  anilistId,
+  episode,
+  dubMode = "sub",
+  extraParams = {},
+) => {
+  const src = PLAYER_SOURCES.find((s) => s.id === sourceId);
+  if (!src?.animeUrl || !anilistId || !episode) return null;
+  const url = new URL(
+    src.animeUrl(anilistId, episode, dubMode === "dub" ? "dub" : "sub"),
+  );
+  Object.entries(src.params || {}).forEach(([k, v]) =>
+    url.searchParams.set(k, v),
+  );
+  Object.entries(extraParams).forEach(([k, v]) => {
+    if (v != null) url.searchParams.set(k, v);
+  });
+  return url.toString();
+};
 
 // Return the next non-async source after `currentId` in PLAYER_SOURCES order
 export const getNextNonAsyncSource = (currentId) => {

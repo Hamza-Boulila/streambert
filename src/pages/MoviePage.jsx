@@ -16,6 +16,9 @@ import {
   sourceSkipsResetGuard,
   sourceProgressViaFrames,
   sourceIsAsync,
+  sourceSupportsAnime,
+  sourceIsAnimeCapable,
+  getAnimeSourceUrl,
   fetchAnilistData,
   cleanAnilistDescription,
   isAnimeContent,
@@ -148,6 +151,39 @@ export default function MoviePage({
     () => isAnimeContent(item, details),
     [item.id, details],
   );
+
+  // Direct (non-async) player URL. Anime-capable sources (Vidnest) use their
+  // anime route (AniList id + episode 1 + sub/dub) when AniList data exists;
+  // otherwise the regular TMDB movie route is used.
+  const playerDirectUrl = useMemo(() => {
+    if (isAnime && sourceSupportsAnime(playerSource) && anilistData?.id) {
+      const animeUrl = getAnimeSourceUrl(
+        playerSource,
+        anilistData.id,
+        1,
+        dubMode,
+      );
+      if (animeUrl) return animeUrl;
+    }
+    return getSourceUrl(
+      playerSource,
+      "movie",
+      srcId.id,
+      null,
+      null,
+      {},
+      playerAccentColor,
+      playerSubLang,
+    );
+  }, [
+    isAnime,
+    playerSource,
+    anilistData,
+    dubMode,
+    srcId.id,
+    playerAccentColor,
+    playerSubLang,
+  ]);
   const [downloaderFolder, setDownloaderFolder] = useState(
     () => storage.get("downloaderFolder") || "",
   );
@@ -305,11 +341,12 @@ export default function MoviePage({
         },
       );
       // Switch to anime source if current source is not an anime source
-      const currentSrc = PLAYER_SOURCES.find((s) => s.id === playerSource);
-      if (!currentSrc?.tag) {
+      // (anime-only tagged sources and anime-capable ones like Vidnest are fine)
+      if (!sourceIsAnimeCapable(playerSource)) {
         const saved = storage.get("playerSource");
-        const savedSrc = PLAYER_SOURCES.find((s) => s.id === saved);
-        setPlayerSource(savedSrc?.tag ? saved : ANIME_DEFAULT_SOURCE);
+        setPlayerSource(
+          sourceIsAnimeCapable(saved) ? saved : ANIME_DEFAULT_SOURCE,
+        );
       }
     } else {
       // Switch back to non-anime source if current source is anime-only
@@ -1057,16 +1094,7 @@ export default function MoviePage({
                   ? "about:blank"
                   : sourceIsAsync(playerSource)
                     ? resolvedPlayerUrl || "about:blank"
-                    : getSourceUrl(
-                        playerSource,
-                        "movie",
-                        srcId.id,
-                        null,
-                        null,
-                        {},
-                        playerAccentColor,
-                        playerSubLang,
-                      ) || "about:blank"
+                    : playerDirectUrl || "about:blank"
               }
               partition="persist:player"
               allowpopups="false"
@@ -1101,8 +1129,9 @@ export default function MoviePage({
                 {PLAYER_SOURCES.find((s) => s.id === playerSource)?.label ??
                   "Source"}
               </button>
-              {/* Sub/Dub toggle, only for async (AllManga) sources */}
-              {sourceIsAsync(playerSource) && (
+              {/* Sub/Dub toggle: AllManga, and anime-capable sources (Vidnest) on anime titles */}
+              {(sourceIsAsync(playerSource) ||
+                (isAnime && sourceSupportsAnime(playerSource))) && (
                 <button
                   className="player-overlay-btn"
                   onClick={() => {
@@ -1146,16 +1175,7 @@ export default function MoviePage({
                   }
                   const url = sourceIsAsync(playerSource)
                     ? resolvedPlayerUrl
-                    : getSourceUrl(
-                        playerSource,
-                        "movie",
-                        srcId.id,
-                        null,
-                        null,
-                        {},
-                        playerAccentColor,
-                        playerSubLang,
-                      );
+                    : playerDirectUrl;
                   if (!url) return;
                   pipUrlRef.current = url;
                   window.electron?.openPipWindow?.(url, item.title);
