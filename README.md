@@ -26,6 +26,16 @@ A modern, self-hosted web application and Docker container to stream any Movie, 
 
 ---
 
+## ⚡ One-Click Run (Any OS)
+
+Streambert includes one-click cross-platform launchers that automatically configure the environment, start Docker (or fallback to local Node.js), wait for health checks, and launch your default browser:
+
+- **🍎 macOS:** Double-click **`run.command`** in Finder (or run `./run.sh` in Terminal).
+- **🐧 Linux:** Double-click or run **`./run.sh`** in Terminal.
+- **🪟 Windows:** Double-click **`run.bat`** in Explorer (or run `./run.sh` in Git Bash / WSL).
+
+---
+
 ## 🐳 Quick Start with Docker
 
 ### 1. Using Docker Compose (Recommended)
