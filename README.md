@@ -1,324 +1,205 @@
 # Streambert (Web & Docker Edition)
 
-A modern, self-hosted Web Application & Docker container to stream any Movie, TV Series, or Anime in the world with zero ads and tracking.
+[![GitHub](https://img.shields.io/badge/GitHub-Hamza--Boulila%2Fstreambert-181717?style=for-the-badge&logo=github)](https://github.com/Hamza-Boulila/streambert)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/Hamza-Boulila/streambert)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/Node.js-22%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 
-> **Fork Note:** This repository is a web-native fork of [truelockmc/streambert](https://github.com/truelockmc/streambert). Streambert was originally an Electron desktop application; this fork converts it into a browser-native web application that can be run anywhere via Docker or standard Node.js servers.
+A modern, self-hosted web application and Docker container to stream any Movie, TV Series, or Anime in the world with zero ads and zero tracking.
+
+> **Fork Information:** This repository is an open-source, web-native fork of [truelockmc/streambert](https://github.com/truelockmc/streambert). Streambert was originally designed as an Electron desktop application; this fork converts it into a browser-native web app that can be self-hosted on any server, homelab, VPS, or cloud platform via Docker, Docker Compose, Dokploy, Coolify, or Portainer.
 
 ![Logo](public/logo.svg)
 
+---
+
+## ✨ Features
+
+- 🎦 **Universal Streaming:** Stream Movies, TV Shows, and Anime directly in any modern browser on desktop, tablet, or mobile.
+- 🐳 **Self-Host Anywhere:** One-command deployment with Docker, Docker Compose, Dokploy, Coolify, or Portainer.
+- 🛡️ **Zero Ads & Trackers:** Clean, built-in protection against popup ads, redirects, and third-party trackers.
+- 🍿 **Rich TMDB Metadata:** Fast search, detailed overviews, cast information, trailer modal previews, and ratings sourced from TMDB.
+- 🌸 **Anime Support:** Automatically detects anime and routes metadata from [AniList](https://anilist.co/) with streams sourced from AllManga.
+- 📃 **Subtitles:** Multi-language subtitle integration with Wyzie and SubDL search.
+- 📚 **Personal Library:** Save titles to your watchlist, track your watched history, and browse custom categories.
+- 🎨 **Modern Responsive UI:** Dark-mode glassmorphic aesthetic, trending carousel, responsive layout, and customizable themes.
+
+---
+
 ## 🐳 Quick Start with Docker
 
-The easiest way to run Streambert Web is with Docker Compose:
+### 1. Using Docker Compose (Recommended)
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Hamza-Boulila/streambert.git
+   cd streambert
+   ```
+
+2. **Configure your TMDB API Key:**
+   Copy `.env.example` to `.env` (or `.env.local`):
+   ```bash
+   cp .env.example .env
+   ```
+   Open `.env` and add your [free TMDB Read Access Token](https://www.themoviedb.org/settings/api):
+   ```ini
+   TMDB_API_KEY=your_tmdb_read_access_token_here
+   PORT=3000
+   ```
+   *(Note: Setting `TMDB_API_KEY` in `.env` is optional. If left blank, you will simply be prompted to enter it once in the web UI on first launch).*
+
+3. **Start the container:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Open Streambert:**
+   Navigate to **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+---
+
+### 2. Run with Docker CLI
 
 ```bash
-# 1. Clone this repository
-git clone https://github.com/Hamza-Boulila/streambert.git
-cd streambert
-
-# 2. Start the container
-docker compose up -d
-
-# 3. Open in your browser
-# Navigate to http://localhost:3000
+docker build -t streambert-web .
+docker run -d \
+  --name streambert \
+  -p 3000:3000 \
+  -e PORT=3000 \
+  -e TMDB_API_KEY="your_tmdb_read_access_token_here" \
+  -v streambert_downloads:/app/downloads \
+  --restart unless-stopped \
+  streambert-web
 ```
 
-### Docker Compose Options
+---
 
-You can optionally pre-configure your [free TMDB API Read Access Token](tmdb-tutorial.md) directly in `docker-compose.yml` or via environment variables:
+## 🚀 Self-Hosting on PaaS Platforms (Dokploy, Coolify, Portainer)
 
-```yaml
-services:
-  streambert:
-    image: streambert-web:latest
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - PORT=3000
-      - TMDB_API_KEY=your_jwt_read_access_token_here
-    volumes:
-      - ./downloads:/app/downloads
-    restart: unless-stopped
-```
+Streambert is designed to deploy seamlessly from Git across popular self-hosting dashboards:
 
-Or pass it inline:
-```bash
-TMDB_API_KEY="eyJ..." docker compose up -d
-```
+### Dokploy / Coolify
+1. In your dashboard, create a new **Application**.
+2. Select **Source:** `Git Repository`.
+3. Enter repository URL: `https://github.com/Hamza-Boulila/streambert.git` (branch: `main`).
+4. Set **Build Type:** `Dockerfile` (or `Docker Compose`).
+5. Set **Port:** `3000`.
+6. Add Environment Variables:
+   - `TMDB_API_KEY`: *(Your TMDB API Read Access Token)*
+7. Click **Deploy**. The platform will automatically build the multi-stage image and expose the web app.
+
+### Portainer Stacks
+1. Open Portainer > **Stacks** > **Add stack**.
+2. Choose **Repository** and provide `https://github.com/Hamza-Boulila/streambert.git`.
+3. Set Compose path to `docker-compose.yml`.
+4. Add environment variables if desired and click **Deploy the stack**.
 
 ---
 
 ## 💻 Running Locally without Docker
 
-```bash
-# 1. Install dependencies
-npm install
+If you want to run or develop Streambert directly on your machine with Node.js:
 
-# 2. Build frontend
-npm run build
+### Prerequisites
+- [Node.js](https://nodejs.org/) (>= 20.0.0)
+- npm (>= 10.0.0)
 
-# 3. Start web server
-npm start
-# App is live at http://localhost:3000
+### Steps
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-# For local development with live reload:
-npm run dev
+2. **Configure environment:**
+   Create a `.env` or `.env.local` file:
+   ```ini
+   PORT=3000
+   TMDB_API_KEY=your_tmdb_token_here
+   ```
+
+3. **Build the web frontend:**
+   ```bash
+   npm run build
+   ```
+
+4. **Start the production server:**
+   ```bash
+   npm start
+   ```
+   The application is live at **http://localhost:3000**.
+
+5. **Local Development (Vite Dev Server with HMR):**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## ⚙️ Environment Variables
+
+| Variable | Required | Default | Description |
+| :--- | :---: | :---: | :--- |
+| `PORT` | Optional | `3000` | Port for the web server to listen on. |
+| `TMDB_API_KEY` | Optional | *None* | TMDB v4 Read Access Token (JWT) or v3 API Key. If unset, can be configured in the UI. |
+| `NODE_ENV` | Optional | `production` | Node environment (`production` or `development`). |
+
+---
+
+## 🛠️ How Streambert Web Works
+
+This web fork replaces the Electron desktop layer with web-standard browser APIs and a Node.js backend:
+
+- **Browser WebAdapter (`src/utils/webAdapter.js`):** Emulates Electron IPC APIs via browser-native mechanisms (`localStorage`, Web Notification API, HTML5 Fullscreen API, and window messaging).
+- **Iframe Video Embeds:** Replaced Electron `<webview>` elements with responsive HTML5 `<iframe>` embeds configured with standard media permissions (`accelerometer`, `autoplay`, `encrypted-media`, `fullscreen`).
+- **Express Backend Server (`server.js`):** High-efficiency static file server with Single-Page Application (SPA) routing, environment variable configuration endpoint (`/api/config`), and container health monitoring (`/api/health`).
+- **AllManga Anime Proxy (`src/server/allmangaService.js`):** Server-side GraphQL resolver for AllManga anime streams with HTTP 206 Partial Content range support.
+- **Subtitle Extraction (`src/server/subtitlesService.js`):** SubDL and Wyzie API search integration and server-side subtitle archive handling.
+- **Minimal Docker Footprint:** Multi-stage build based on lightweight `node:22-alpine` running as non-root user `node`.
+
+---
+
+## 🔑 Getting a Free TMDB API Key
+
+Streambert uses The Movie Database (TMDB) for posters, descriptions, ratings, and search:
+1. Create a free account at [themoviedb.org](https://www.themoviedb.org/signup).
+2. Go to **Settings > API** ([themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)).
+3. Generate an API Key (choose "Developer").
+4. Copy the **API Read Access Token (v4 auth)** and paste it into `.env` (or directly into Streambert when prompted).
+
+---
+
+## 📁 Project Structure
+
+```
+streambert/
+├── Dockerfile                  # Multi-stage production container definition
+├── docker-compose.yml          # Container configuration with healthchecks
+├── server.js                   # Express backend server (SPA & streaming APIs)
+├── package.json                # Dependencies and scripts
+├── .env.example                # Configuration template
+├── public/                     # Static icons, logos, and fonts
+└── src/
+    ├── main.jsx                # Application root entry point
+    ├── App.jsx                 # Core routing, state management, and shell
+    ├── components/             # Reusable UI components (Sidebar, Search, etc.)
+    ├── pages/                  # Views (HomePage, MoviePage, TVPage, Settings)
+    ├── server/                 # Backend proxy services (AllManga, Subtitles)
+    └── utils/                  # WebAdapter, TMDB API, storage, appearance
 ```
 
 ---
 
-## 🛠️ Key Changes in this Web Fork
+## ⚖️ Legal & Privacy Disclaimer
 
-- **Browser Web Adapter**: Created [`src/utils/webAdapter.js`](src/utils/webAdapter.js) to replace Electron desktop IPC. Implements browser-native local storage for API keys and watch history, standard Web Notification API, external navigation, and HTML5 Fullscreen.
-- **Iframe Video Embeds**: Converted Electron-specific `<webview>` tags into standard `<iframe>` tags with full accelerometer, autoplay, encrypted-media, and fullscreen permissions.
-- **Provider Sandbox Compatibility**: Removed the restrictive `sandbox` attribute from player iframes to prevent video providers (Videasy, VidSrc, VidKing) from blocking playback with "Iframe Sandbox Detected" errors.
-- **Node.js & Express Backend**: Added [`server.js`](server.js) to serve the SPA client, manage health checks, and provide streaming APIs.
-- **AllManga Anime Resolver & Proxy**: Created [`src/server/allmangaService.js`](src/server/allmangaService.js) to resolve anime episodes, decipher GraphQL responses, and proxy video streams with HTTP 206 Partial Content range support.
-- **Subtitle Service**: Created [`src/server/subtitlesService.js`](src/server/subtitlesService.js) to search SubDL / Wyzie and extract subtitle ZIP archives.
-- **Multi-Stage Docker Image**: Minimal Alpine Linux Docker image running as a non-root user with automated healthcheck monitoring.
-
----
-
-## Why Streambert?
-
-- 🎦 **Streaming:** Stream any Movie, Anime or TV Series from around the World.
-- 📥 **Downloading:** Download anything you want to watch.
-- 📃 **Subtitles:** Download and manage Subtitles.
-- ⚙️ **Customizability:** Customize the Interface and Features to your unique needs.
-- 📚 **Library:** Track what you watched, save stuff you want to watch and manage your Downloads.
-- ✨ **Trending:** Discover new things to Watch every Day.
-- 🛡️ **Privacy:** Completely Ads and Tracker free, forever.
-- ⚡ **Speed:** Stream faster than any Browser can, download with multithreading.
-
-![Explore new Stuff](screenshots/trending.png)
-![Watch TV Series](screenshots/series.png)
-![Watch Movies](screenshots/movie.png)
-![Watch Anime](screenshots/anime.png)
-![Without any Ads or Trackers](screenshots/adblock.png)
-![Customize](screenshots/customize-1.png)
-![Customize](screenshots/customize-2.png)
-![Download Subtitles](screenshots/subs.png)
-![Download Everything](screenshots/download.png)
----
-[![Stargazers](https://reporoster.com/stars/dark/truelockmc/streambert)](https://github.com/truelockmc/streambert/stargazers)
----
-## Streaming
-The Application mainly gets Video Streams from VidSrc (you can also Stream from videasy and vidking). <br></br>
-It fetches Information for Images, Info Texts, Search and Homepage from [tmdb](https://www.themoviedb.org/).
+**Streambert is for educational and personal use only.**
+- Streambert does not host, store, or distribute any media files or video streams.
+- All metadata is provided by TMDB and AniList.
+- All video streams are aggregated from third-party publicly accessible services.
+- Users are solely responsible for ensuring compliance with applicable copyright and local regulations in their jurisdiction.
+- Streambert collects zero personal data, contains zero telemetry, and is completely ad-free.
 
 ---
 
-## Downloading
-You can download those Video Streams because the Program sources Links to their .m3u8 Playlist Files ([similar to this Browser Extension](https://addons.mozilla.org/en-US/firefox/addon/m3u8-link-finder/)). <br></br>
-Once you click 'Download' these Links are used to download the Full Movie/TV Episode using [this Program](https://github.com/truelockmc/vid-dl-cli-only). You can then watch them In-App or take the Files on any Storage Medium you want.
+## 📄 License
 
----
-
-## Anime
-You can also watch Anime, the App checks if a Movie or Series is an Anime and then sources its Metadata from [AniList](https://anilist.co/) instead of [tmdb](https://www.themoviedb.org/). <br></br>
-Media Files for Animes are scraped from AllManga.to (i stole this mechanic from [ani-cli](https://github.com/pystardust/ani-cli)). The App directly gets .mp4 Files and doesnt evem show you the AllManga website, you can also download these Files, just like any other Content.
-
-
-## Requirements
-
-- [Node.js](https://nodejs.org/) (>=22.12.0) installed (only if you aren't using [prebuilt Binaries](https://codeberg.org/truelockmc/streambert/releases/latest))
-- A free TMDB API Read Access Token ([Guide on how to get one](tmdb-tutorial.md))
-- For downloading, [this Program](https://github.com/truelockmc/vid-dl-cli-only/releases/latest) somewhere on your PC and [ffmpeg](https://ffmpeg.org/download.html) installed
-
----
-## Installation
-On first launch you'll be prompted to enter your TMDB API key. ([Guide on how to get one](tmdb-tutorial.md))
-It's saved locally, you only need to do this once.
-
-### Linux, Manual (.deb / .AppImage / .pacman)
-
-Download the latest `.deb` `.pacman` or `.AppImage` from the [Releases](https://codeberg.org/truelockmc/streambert/releases/latest) page.
-```bash
-# .deb
-sudo dpkg -i streambert_*.deb
-
-# Arch Linux (.pacman)
-sudo pacman -U streambert-*.pacman
-
-# .AppImage (you can also do it with Gearlever)
-chmod +x Streambert-x64.AppImage && ./Streambert-x64.AppImage
-```
-
-### Windows
-
-Download the latest `Streambert Setup *.exe` from the [Releases](https://codeberg.org/truelockmc/streambert/releases/latest) page and run it.
-
-### macOS
-Download the latest `Streambert-*-universal.dmg` from the [Releases](https://codeberg.org/truelockmc/streambert/releases/latest) page, open it and drag Streambert to your Applications folder.
-
----
-
-
-## Building from Source
-1. Install dependencies:
-```bash
-npm install
-```
-2. Build
-```bash
-npm run dist:win   
-```
-or
-```bash
-npm run dist:linux 
-```
-or (for Arch Linux)
-```bash
-npm run dist:arch
-```
-or (for an AppImage only)
-```bash
-npm run dist:appimage
-```
-or (for a .deb only)
-```bash
-npm run dist:deb
-```
-or (for a .rpm only)
-```bash
-npm run dist:rpm
-```
-or (for macOS)
-```bash
-npm run dist:mac
-```
-or (build all platforms at once)
-```bash
-npm run dist
-```
-
-> [!IMPORTANT]
-> If you are building/installing on Arch Linux and encounter errors, you may need these libraries:
-> - **libcrypt.so.1 error:** `sudo pacman -S libxcrypt-compat`
-> - **http-parser dependency error:** `yay -S http-parser` (from AUR)
-
-## License
-This project is open-source software licensed under the GNU General Public License v3.0 [(GPL-3.0)](LICENSE).
-
-Forks may be created but they MUST stay open-sourced.
-
-## Contributing
-Everyone is welcome to contribute to this project.
-Before contributing please make sure to read the [Contributing Guidelines](CONTRIBUTING.md) and act accordingly.
-
-## Privacy Disclaimer
-Streambert itself does not collect ANY data. There is no centralized service which the app relies on.
-However, the streaming sources and github (for downloading updates in-app) may still collect your data.
-
-Streambert has built-in tracker/- and adblocking, but obviously that is not perfect.
-
-## Legal Disclaimer
-
-**IMPORTANT: This application is for educational and personal use only.**
-
-- Streambert does not host, store, or distribute any copyrighted content
-- All content is sourced from third-party providers and websites
-- Users are solely responsible for ensuring they have legal rights to access any content
-- The developer does not endorse or encourage copyright infringement
-- Users must comply with all applicable laws in their jurisdiction
-- Any legal issues should be directed to the actual content providers
-- This app functions as a search engine aggregator only
-- No copyrighted material is stored on my side
-
-## Legal Notice
-
-This application is provided "as is" for educational purposes. The developer:
-- Does not claim ownership of any content
-- Does not profit from copyrighted material in any way
-- Does not control third-party content providers
-- Encourages users to support content creators through legal means
-
-[![RepoStars](https://repostars.dev/api/embed?repo=truelockmc%2Fstreambert&theme=dark)](https://repostars.dev/?repos=truelockmc%2Fstreambert&theme=dark)
-
-<details>
-    <summary>Project Structure</summary>
-    
-```
-Project Root
-├── index.html
-├── main.js
-├── package.json
-├── preload.js
-├── vite.config.js
-├── LICENSE
-├── README.md
-├── public
-│   ├── icon.png
-│   ├── installer-sidebar.bmp
-│   └── logo.svg
-├── screenshots
-│   ├── adblock.png
-│   ├── anime.png
-│   ├── api-settings_tmdb.png
-│   ├── application_tmdb.png
-│   ├── download.png
-│   ├── icon.png
-│   ├── movie.png
-│   ├── personal-use_tmdb.png
-│   ├── series.png
-│   ├── setup.png
-│   ├── signup_tmdb.png
-│   ├── subs.png
-│   ├── token_tmdb.png
-│   └── trending.png
-└── src
-    ├── App.jsx
-    ├── main.jsx
-    ├── components
-    │   ├── BlockedStatsModal.jsx
-    │   ├── CloseConfirmModal.jsx
-    │   ├── DownloadModal.jsx
-    │   ├── ErrorBoundary.jsx
-    │   ├── Icons.jsx
-    │   ├── KeyboardShortcutsModal.jsx
-    │   ├── MediaCard.jsx
-    │   ├── SearchModal.jsx
-    │   ├── SetupScreen.jsx
-    │   ├── Sidebar.jsx
-    │   ├── SubtitleDownloaderModal.jsx
-    │   ├── TrailerModal.jsx
-    │   ├── TrendingCarousel.jsx
-    │   ├── UpdateModal.jsx
-    │   └── WindowTitlebar.jsx
-    ├── ipc
-    │   ├── allmanga.js
-    │   ├── blockStats.js
-    │   ├── downloads.js
-    │   ├── player.js
-    │   ├── storage.js
-    │   └── subtitles.js
-    ├── pages
-    │   ├── DownloadsPage.jsx
-    │   ├── HomePage.jsx
-    │   ├── LibraryPage.jsx
-    │   ├── MoviePage.jsx
-    │   ├── SettingsPage.jsx
-    │   └── TVPage.jsx
-    ├── styles
-    │   ├── global.css
-    │   └── fonts
-    │       ├── bebas-neue-regular.woff2
-    │       ├── dm-sans-300.woff2
-    │       ├── dm-sans-500.woff2
-    │       ├── dm-sans-600.woff2
-    │       └── dm-sans-regular.woff2
-    └── utils
-        ├── ageRating.js
-        ├── aniSkip.js
-        ├── api.js
-        ├── appearance.js
-        ├── backup.js
-        ├── episodeMappings.js
-        ├── homeLayout.js
-        ├── storage.js
-        ├── subtitles.js
-        ├── updates.js
-        ├── useBlockedStats.js
-        └── useRatings.js
-```
-</details>
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE](LICENSE) file for details.
